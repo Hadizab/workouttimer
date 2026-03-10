@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+
+        .timer-display {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 50px 30px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3),
+                        inset 0 0 0 1px rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timer-display::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .time {
+            font-size: 7rem;
+            font-weight: 200;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -2px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 30px rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .time.running {
+            color: #00ff88;
+            text-shadow: 0 0 40px rgba(0,255,136,0.5);
+        }
+
+        .time.warning {
+            color: #ff6b6b;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .milliseconds {
+            font-size: 2rem;
+            opacity: 0.6;
+            margin-left: 10px;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke: rgba(255,255,255,0.1);
+            stroke-width: 4;
+        }
+
+        .progress-ring .progress {
+            fill: none;
+            stroke: #00ff88;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 20px 40px;
+            border: none;
+            border-radius: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            min-width: 140px;
+        }
+
+        .preset-btn[data-time="10"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .preset-btn[data-time="29"] {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .preset-btn[data-time="30"] {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .preset-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        .preset-btn:active {
+            transform: translateY(-2px);
+        }
+
+        .preset-btn.active {
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.5), 0 15px 30px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+
+        .preset-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .preset-btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 15px 30px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-width: 120px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alarm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .alarm-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .alarm-text {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #ff6b6b;
+            margin-bottom: 30px;
+            animation: alarmPulse 0.5s ease-in-out infinite;
+            text-shadow: 0 0 50px rgba(255,107,107,0.8);
+        }
+
+        @keyframes alarmPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .stop-alarm-btn {
+            padding: 20px 60px;
+            font-size: 1.5rem;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 10px 30px rgba(255,107,107,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .stop-alarm-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(255,107,107,0.6);
+        }
+
+        .visual-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        @media (max-width: 600px) {
+            .time { font-size: 4.5rem; }
+            .preset-btn { padding: 15px 25px; font-size: 1.1rem; min-width: 100px; }
+            .title { font-size: 2rem; }
+            .alarm-text { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">WORKOUT TIMER</h1>
+        <p class="subtitle">Select a duration to begin</p>
+
+        <div class="timer-display">
+            <svg class="progress-ring" width="300" height="300">
+                <circle cx="150" cy="150" r="140"></circle>
+                <circle class="progress" cx="150" cy="150" r="140" 
+                        stroke-dasharray="879.65" stroke-dashoffset="879.65"></circle>
+            </svg>
+            <div class="time" id="display">00:00<span class="milliseconds">.00</span></div>
+            <div class="status" id="status">Ready</div>
+            <div class="visual-indicator" id="indicator">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+
+        <div class="preset-buttons">
+            <button class="preset-btn" data-time="10" onclick="setTimer(10)">
+                10 Min
+            </button>
+            <button class="preset-btn" data-time="29" onclick="setTimer(29)">
+                29 Min
+            </button>
+            <button class="preset-btn" data-time="30" onclick="setTimer(30)">
+                30 Min
+            </button>
+        </div>
+
+        <div class="control-buttons">
+            <button class="control-btn" id="startBtn" onclick="startTimer()" disabled>▶ Start</button>
+            <button class="control-btn" id="pauseBtn" onclick="pauseTimer()" disabled>⏸ Pause</button>
+            <button class="control-btn" onclick="resetTimer()">↺ Reset</button>
+        </div>
+    </div>
+
+    <div class="alarm-overlay" id="alarmOverlay">
+        <div class="alarm-text">⏰ TIME'S UP!</div>
+        <button class="stop-alarm-btn" onclick="stopAlarm()">STOP ALARM</button>
+    </div>
+
+    <script>
+        let countdown;
+        let totalTime = 0;
+        let remainingTime = 0;
+        let isRunning = false;
+        let isPaused = false;
+        let audioContext;
+        let oscillator;
+        let gainNode;
+
+        const display = document.getElementById('display');
+        const status = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const progressCircle = document.querySelector('.progress');
+        const alarmOverlay = document.getElementById('alarmOverlay');
+        const circumference = 2 * Math.PI * 140;
+
+        // Initialize audio context on first user interaction
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function setTimer(minutes) {
+            initAudio();
+            clearInterval(countdown);
+            isRunning = false;
+            isPaused = false;
+            
+            totalTime = minutes * 60 * 1000; // Convert to milliseconds
+            remainingTime = totalTime;
+            
+            updateDisplay(remainingTime);
+            updateProgress(remainingTime);
+            
+            // Update UI
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.time) === minutes) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            status.textContent = `${minutes} Minutes Set`;
+            display.classList.remove('running', 'warning');
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.textContent = '▶ Start';
+            
+            // Reset dots
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
+        }
+
+        function startTimer() {
+            if (remainingTime <= 0) return;
+            
+            isRunning = true;
+            isPaused = false;
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            status.textContent = 'Running...';
+            display.classList.add('running');
+            display.classList.remove('warning');
+            
+            // Animate dots
+            animateDots();
+            
+            const startTime = Date.now();
+            const endTime = startTime + remainingTime;
+            
+            countdown = setInterval(() => {
+                const now = Date.now();
+                remainingTime = endTime - now;
+                
+                if (remainingTime <= 0) {
+                    remainingTime = 0;
+                    clearInterval(countdown);
+                    timerComplete();
+                }
+                
+                updateDisplay(remainingTime);
+                updateProgress(remainingTime);
+                
+                // Warning when less than 10 seconds
+                if (remainingTime <= 10000 && remainingTime > 0) {
+                    display.classList.add('warning');
+                    display.classList.remove('running');
+                }
+            }, 10);
+        }
+
+        function pauseTimer() {
+            clearInterval(countdown);
+            isRunning = false;
+            isPaused = true;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            startBtn.textContent = '▶ Resume';
+            status.textContent = 'Paused';
+            display.classList.remove('running');
+            
+            // Stop dot animation
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
+        }
+
+        function resetTimer() {
+            clearInterval(countdown);
+            isRunning = false;
+            isPaused = false;
+            remainingTime = 0;
+            totalTime = 0;
+            
+            display.innerHTML = '00:00<span class="milliseconds">.00</span>';
+            status.textContent = 'Ready';
+            display.classList.remove('running', 'warning');
+            
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
+            
+            progressCircle.style.strokeDashoffset = circumference;
+            
+            startBtn.disabled = true;
+            pauseBtn.disabled = true;
+            startBtn.textContent = '▶ Start';
+        }
+
+        function updateDisplay(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = Math.floor((ms % 1000) / 10);
+            
+            const mm = minutes.toString().padStart(2, '0');
+            const ss = seconds.toString().padStart(2, '0');
+            const mss = milliseconds.toString().padStart(2, '0');
+            
+            display.innerHTML = `${mm}:${ss}<span class="milliseconds">.${mss}</span>`;
+        }
+
+        function updateProgress(ms) {
+            const progress = ms / totalTime;
+            const offset = circumference - (progress * circumference);
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        function animateDots() {
+            const dots = document.querySelectorAll('.dot');
+            let index = 0;
+            
+            setInterval(() => {
+                if (!isRunning) return;
+                dots.forEach(dot => dot.classList.remove('active'));
+                dots[index].classList.add('active');
+                index = (index + 1) % dots.length;
+            }, 500);
+        }
+
+        function timerComplete() {
+            isRunning = false;
+            display.innerHTML = '00:00<span class="milliseconds">.00</span>';
+            status.textContent = 'Complete!';
+            display.classList.remove('running');
+            startBtn.disabled = true;
+            pauseBtn.disabled = true;
+            
+            // Show alarm overlay
+            alarmOverlay.classList.add('active');
+            
+            // Play alarm sound
+            playAlarm();
+        }
+
+        function playAlarm() {
+            if (!audioContext) return;
+            
+            // Create oscillator for beeping sound
+            oscillator = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            // Beep pattern
+            let isBeeping = true;
+            const beepInterval = setInterval(() => {
+                if (!isBeeping) {
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    isBeeping = true;
+                } else {
+                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                    isBeeping = false;
+                }
+            }, 200);
+            
+            oscillator.start();
+            
+            // Store interval to clear later
+            oscillator.beepInterval = beepInterval;
+        }
+
+        function stopAlarm() {
+            alarmOverlay.classList.remove('active');
+            
+            // Stop sound
+            if (oscillator) {
+                clearInterval(oscillator.beepInterval);
+                oscillator.stop();
+                oscillator = null;
+            }
+            
+            resetTimer();
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isRunning) {
+                    pauseTimer();
+                } else if (remainingTime > 0) {
+                    startTimer();
+                }
+            } else if (e.code === 'KeyR') {
+                resetTimer();
+            } else if (e.code === 'Digit1') {
+                setTimer(10);
+            } else if (e.code === 'Digit2') {
+                setTimer(29);
+            } else if (e.code === 'Digit3') {
+                setTimer(30);
+            } else if (e.code === 'Escape' && alarmOverlay.classList.contains('active')) {
+                stopAlarm();
+            }
+        });
+
+        // Prevent sleep/screen lock when timer is running
+        if ('wakeLock' in navigator) {
+            let wakeLock = null;
+            
+            setInterval(async () => {
+                if (isRunning && !wakeLock) {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    } catch (err) {
+                        console.log('Wake lock failed:', err);
+                    }
+                } else if (!isRunning && wakeLock) {
+                    wakeLock.release();
+                    wakeLock = null;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
